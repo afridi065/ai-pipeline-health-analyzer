@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Calculator App</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --input-bg: #ffffff;
+            --input-border: #cccccc;
+            --result-bg: #e8f5e9;
+            --error-bg: #ffebee;
+            --error-text: #c62828;
+            --history-bg: #f7f7f7;
+        }
+        [data-theme="dark"] {
+            --bg: #1a1a1a;
+            --card-bg: #2b2b2b;
+            --text: #f0f0f0;
+            --input-bg: #3a3a3a;
+            --input-border: #555555;
+            --result-bg: #2e4d33;
+            --error-bg: #4d2e2e;
+            --error-text: #ff8a80;
+            --history-bg: #333333;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        .card {
+            background: var(--card-bg);
+            color: var(--text);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            width: 320px;
+        }
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { font-size: 22px; margin: 0; }
+        .toggle-btn {
+            background: none;
+            border: 1px solid var(--input-border);
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            color: var(--text);
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border-radius: 5px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text);
+        }
+        button.calc-btn {
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button.calc-btn:hover { background: #45a049; }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            background: var(--result-bg);
+            border-radius: 5px;
+            text-align: center;
+            font-size: 18px;
+        }
+        .error {
+            margin-top: 15px;
+            padding: 10px;
+            background: var(--error-bg);
+            border-radius: 5px;
+            text-align: center;
+            color: var(--error-text);
+        }
+        .history {
+            margin-top: 20px;
+            background: var(--history-bg);
+            border-radius: 5px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+        .history-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .history-item {
+            padding: 4px 0;
+            border-bottom: 1px solid var(--input-border);
+        }
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #c62828;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        #num2-group.hidden { display: none; }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="card">
+        <div class="top-row">
+            <h1>Calculator</h1>
+            <button class="toggle-btn" onclick="toggleTheme()">🌓</button>
+        </div>
+        <form method="POST" onsubmit="return true;">
+            <input type="text" name="num1" placeholder="First number" value="{{ num1 }}" required>
+            <div id="num2-group">
+                <input type="text" name="num2" placeholder="Second number" value="{{ num2 }}">
+            </div>
+            <select name="operation" id="operation" onchange="toggleNum2()">
+                <option value="add" {% if operation == 'add' %}selected{% endif %}>Add (+)</option>
+                <option value="subtract" {% if operation == 'subtract' %}selected{% endif %}>Subtract (-)</option>
+                <option value="multiply" {% if operation == 'multiply' %}selected{% endif %}>Multiply (×)</option>
+                <option value="divide" {% if operation == 'divide' %}selected{% endif %}>Divide (÷)</option>
+                <option value="power" {% if operation == 'power' %}selected{% endif %}>Power (^)</option>
+                <option value="percentage" {% if operation == 'percentage' %}selected{% endif %}>Percentage (%)</option>
+                <option value="sqrt" {% if operation == 'sqrt' %}selected{% endif %}>Square Root (√)</option>
+            </select>
+            <button type="submit" class="calc-btn">Calculate</button>
+        </form>
+
+        {% if result is not none %}
+        <div class="result">Result: {{ result }}</div>
+        {% endif %}
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        {% if history %}
+        <div class="history">
+            <div class="history-title">
+                <span>History</span>
+                <form method="POST" action="/clear-history" style="margin:0;">
+                    <button type="submit" class="clear-btn">Clear</button>
+                </form>
+            </div>
+            {% for item in history %}
+            <div class="history-item">{{ item }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const current = body.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            body.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        window.onload = function() {
+            const saved = localStorage.getItem('theme');
+            if (saved) document.body.setAttribute('data-theme', saved);
+            toggleNum2();
+        };
+        function toggleNum2() {
+            const op = document.getElementById('operation').value;
+            const group = document.getElementById('num2-group');
+            if (op === 'sqrt') {
+                group.classList.add('hidden');
+            } else {
+                group.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
